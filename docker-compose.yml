@@ -1,0 +1,124 @@
+version: '3.5'
+services:
+    php:
+        image: adobe-ee-luma:2.4.3-p1
+        container_name: php_magento2.4
+        volumes:
+#           - ./:/var/www/html
+            - ./.docker/config/php/from-docker-configuration.ini:/usr/local/etc/php/conf.d/project-configuration.ini
+            - logs_containers:/var/log/php
+        depends_on:
+            - redis
+            - mysql
+            - rabbitmq
+            - elasticsearch
+        networks:
+            - net_services
+
+    mail:
+        container_name: mail_magento2.4
+        image: mailhog/mailhog:latest
+        environment:
+            MAILHOG: magento_mail
+        ports:
+            - 1025:1025
+            - 8025:8025
+        networks:
+            - net_services
+
+    elasticsearch:
+        image: blacktop/elasticsearch:7.6
+        container_name: elasticsearch_magento2.4
+        environment:
+            discovery.type: single-node
+        ports:
+            - 9200:9200
+        networks:
+            - net_services
+
+    kibana:
+        image: blacktop/kibana:7.6
+        container_name: kibana_magento2.4
+        ports:
+            - 5601:5601
+        environment:
+            ELASTICSEARCH_HOSTS: http://127.0.0.1:9200
+        depends_on:
+            - elasticsearch
+        networks:
+            - net_services
+
+    mysql:
+        image: mysql:8.0
+        container_name: mysql_magento2.4
+        volumes:
+            - ./.docker/config/mysql/etc/my.cnf:/etc/mysql/my.cnf
+            - mysql_data:/var/lib/mysql
+            - logs_containers:/var/log
+        environment:
+            MYSQL_ROOT_PASSWORD: magento2
+            MYSQL_USER: magento2
+            MYSQL_PASSWORD: magento2
+            MYSQL_DATABASE: magento2
+        ports:
+            - 3306:3306
+        networks:
+            - net_services
+
+    redis:
+        image: redis:5.0.9-alpine
+        container_name: redis_magento2.4
+        ports:
+            - 6379:6379
+        networks:
+            - net_services
+
+    rabbitmq:
+        image: rabbitmq:3.8.3-management-alpine
+        container_name: rabbitmq_magento2.4
+        environment:
+            RABBITMQ_DEFAULT_USER: guest
+            RABBITMQ_DEFAULT_PASS: guest
+        ports:
+            - 15672:15672
+        networks:
+            - net_services
+
+    nginx:
+        image: nginx:1.19.2-alpine
+        container_name: nginx_magento2.4
+        entrypoint: ["sh", "/etc/nginx/entrypoint.sh"]
+        volumes:
+#            - ./:/var/www/html
+            - ./.docker/config/nginx/entrypoint.sh:/etc/nginx/entrypoint.sh
+            - ./.docker/config/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+            - ./.docker/config/nginx/ssl-self-signed.conf:/etc/nginx/snippets/ssl-self-signed.conf
+            - logs_containers:/var/log/nginx
+        ports:
+            - 80:80
+            - 443:443
+        depends_on:
+            - php
+        networks:
+            - net_services
+
+networks:
+    net_services:
+        name: net_services
+        driver: bridge
+
+volumes:
+
+    mysql_data:
+        driver: local
+        driver_opts:
+            type: none
+            o: bind
+            device: ${PWD}/.docker/config/mysql/data
+
+    logs_containers:
+        driver: local
+        driver_opts:
+            type: none
+            o: bind
+            device: ${PWD}/.docker/config/logs
