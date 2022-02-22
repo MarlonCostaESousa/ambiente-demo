@@ -1,7 +1,7 @@
 version: '3.5'
 services:
     php:
-        image: adobe-ee-luma:2.4.3-p1
+        image: 736751195810.dkr.ecr.us-west-2.amazonaws.com/adobe-ee-luma:2.4.3-p1
         container_name: php_magento2.4
         volumes:
 #           - ./:/var/www/html
